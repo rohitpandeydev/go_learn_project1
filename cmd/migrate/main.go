@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strconv"
 
 	mysqlCfg "github.com/go-sql-driver/mysql"
 	"github.com/golang-migrate/migrate/v4"
@@ -31,22 +32,41 @@ func main() {
 		log.Fatal(err)
 	}
 
-	m, err := migrate.NewWithDatabaseInstance("file//cmd/migrate/migrations",
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://cmd/migrate/migrations", // Change this line
 		"mysql",
 		driver)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	cmd := os.Args[(len(os.Args) - 1)]
-	if cmd == "up" {
+	args := os.Args[1:]
+	if len(args) == 0 {
+		log.Fatal("Command is required. Use 'up', 'down', or 'force'.")
+	}
+
+	cmd := args[0]
+	switch cmd {
+	case "up":
 		if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 			log.Fatal(err)
 		}
-	}
-	if cmd == "down" {
+	case "down":
 		if err := m.Down(); err != nil && err != migrate.ErrNoChange {
 			log.Fatal(err)
 		}
+	case "force":
+		if len(args) != 2 {
+			log.Fatal("Usage: go run cmd/migrate/main.go force <version>")
+		}
+		version, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := m.Force(int(version)); err != nil {
+			log.Fatal(err)
+		}
+	default:
+		log.Fatal("Invalid command. Use 'up', 'down', or 'force'.")
 	}
 }
